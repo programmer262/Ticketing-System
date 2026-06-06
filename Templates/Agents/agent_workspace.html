@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Personal Workspace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-secondary mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">💼 Agent Workspace</span>
+            <span class="text-white-50">Active Agent: <strong>{{ request.user.username }}</strong></span>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-danger" type="submit">Logout</button>
+            </form>
+            {% if request.user.profile.role == "Supervisor" %}
+            <a href="{% url 'dispatch_dashboard' %}" class="btn btn-success mx-3" style="width: 120px;">Dispatch</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+
+
+                <div class="container my-5" style="max-width: 900px;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h2 class="fw-bold text-dark mb-1">Your Dispatched Tasks</h2>
+                            <p class="text-muted mb-0">Tickets manually assigned to you by your supervisor.</p>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for entry in my_queue %}
+                                <div
+                                    class="list-group-item p-4 d-flex justify-content-between align-items-center bg-white">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <span class="badge bg-dark">Queue Position:{{entry.computed_rank}} </span>
+
+                                            <span
+                                                class="badge {% if entry.ticket.priority == 'High' %}bg-danger{% elif entry.ticket.priority == 'Medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                                AI Priority: {{ entry.ticket.priority }}
+                                            </span>
+
+                                            <span class="text-muted small">
+                                                {{ entry.ticket.created_at|date:"M d, H:i" }}</span>
+                                        </div>
+
+                                        <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.2rem;">
+                                            {{entry.ticket }}</h4>
+                                        <p class="text-muted mb-0 small">Opened by customer: <strong
+                                                class="text-secondary">{{entry.ticket.customer}}</strong></p>
+                                    </div>
+
+                                    <a href="{% url 'ticket_detail' entry.ticket.id %}"
+                                        class="btn btn-outline-success px-4 py-2 fw-semibold shadow-sm">
+                                        Open Chat Thread
+                                    </a>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5 text-muted">
+                                    <h3 class="fw-bold text-success mb-2">🎉 Inbox Zero!</h3>
+                                    <p class="mb-0 text-secondary">You have no pending assignments from the supervisor
+                                        right now.
+                                    </p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+</body>
+
+</html>

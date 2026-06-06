@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>{{ ticket.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container my-5" style="max-width: 800px;">
+        <a href="{% url 'ticket_dashboard' %}" class="btn btn-sm btn-link mb-3">← Back to Dashboard</a>
+        
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h3 class="fw-bold">{{ ticket.title }}</h3>
+                <p class="text-muted mb-0">Status: <strong>{{ ticket.status }}</strong> | Priority: <strong>{{ ticket.priority }}</strong></p>
+            </div>
+        </div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4" style="height: 500px; overflow-y: scroll; background-color: #f4f6f8;">
+        {% for msg in messages %}
+            
+            <div class="mb-3 d-flex flex-column {% if msg.sender.user == request.user %}align-items-end{% else %}align-items-start{% endif %}">
+                
+                <div class="p-3 rounded-3 shadow-sm text-dark " style="max-width: 75%;
+                    {% if msg.sender.user == request.user %}
+                        background-color: #0d6efd; color: white !important; /* Current logged-in user bubble */
+                    {% elif msg.sender.role == 'Agent' %}
+                        background-color: #d1e7dd; border-left: 5px solid #198754; /* Human Agent Style */
+                    {% elif msg.sender.role == 'Supervisor' %}
+                        background-color: #e2e3e5; border-left: 5px solid #6c757d; /* Supervisor Style */
+                    {% elif msg.sender.role == 'AI_Agent' or not msg.sender %}
+                        background-color: #e0cffc; border-left: 5px solid #6f42c1; /* AI Co-Pilot Style */
+                    {% endif %}">
+                    
+                    <p class="mb-1">{{ msg.message }}</p>
+                    
+                    <small class="d-block text-end {% if msg.sender.user == request.user %}text-white-50{% else %}text-muted{% endif %}" style="font-size: 0.72rem;">
+                        <strong>
+                            {% if msg.sender %}
+                                {{ msg.sender.user.username }} ({{ msg.sender.role }})
+                            {% else %}
+                                System AI Engine
+                            {% endif %}
+                        </strong> 
+                        • {{ msg.created_at|date:"H:i" }}
+                    </small>
+                </div>
+            </div>
+
+        {% endfor %}
+    </div>
+</div>
+
+        <form method="POST" class="card shadow-sm border-0 p-3">
+            {% csrf_token %}
+            <div class="input-group">
+                <input type="text" name="message" class="form-control" placeholder="Type your reply here..." required autocomplete="off">
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
