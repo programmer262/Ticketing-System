@@ -29,10 +29,10 @@ def create_ticket_view(request):
                 message=message_text
             )
 
-            # 4. Execute the RAG Pipeline to check for existing resolutions
+            # 4. Execute the RAG Pipeline to check for existing resolutions (sync, no Celery)
             try:
-                from .tasks import process_rag_async
-                process_rag_async.delay(str(ticket.id))
+                from .rag_pipeline import process_new_ticket_for_rag
+                process_new_ticket_for_rag(ticket)
             except Exception as e:
                 # Log error but don't fail ticket creation
                 print(f"Error in RAG pipeline: {e}")
