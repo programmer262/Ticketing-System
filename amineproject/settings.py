@@ -10,15 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import os
-from pathlib import Path
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env file
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR/'.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -132,9 +129,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Celery Configuration
-# Using sqla+sqlite for the broker because Redis/RabbitMQ are not installed
-CELERY_BROKER_URL = 'sqla+sqlite:///' + str(BASE_DIR / 'db.sqlite3')
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# RAG Configuration
+RAG_RERANK_THRESHOLD = 0.85

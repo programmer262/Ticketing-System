@@ -31,6 +31,7 @@ class Ticket(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='tickets')
     
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='Low')
+    triage_explanation = models.TextField(blank=True, default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Open')
     
     created_at = models.DateTimeField(auto_now_add=True)

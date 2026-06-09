@@ -1,14 +1,14 @@
 from celery import shared_task
-import logging
 import numpy as np
 import os
 from django.conf import settings
 from .models import Ticket, RerankerTrainingData
-from .rag_pipeline import process_new_ticket_for_rag, get_keras_reranker, get_embedding_model
+from .rag_pipeline import process_new_ticket_for_rag, get_embedding_model, get_keras_reranker
+import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task(name="ticketing_system.tasks.process_rag_async")
+@shared_task
 def process_rag_async(ticket_id):
     """
     Asynchronously processes a new ticket through the RAG pipeline.
@@ -16,49 +16,61 @@ def process_rag_async(ticket_id):
     try:
         ticket = Ticket.objects.get(id=ticket_id)
         process_new_ticket_for_rag(ticket)
-        logger.info(f"Successfully processed RAG for ticket {ticket_id}")
     except Ticket.DoesNotExist:
-        logger.error(f"RAG Task Error: Ticket {ticket_id} not found.")
+        logger.error(f"Ticket {ticket_id} not found for RAG processing.")
+    except Exception as e:
+        logger.exception(f"Error in RAG task for ticket {ticket_id}: {e}")
 
-@shared_task(name="ticketing_system.tasks.train_reranker_async")
-def train_reranker_async():
+@shared_task
+def train_tf_reranker_task():
     """
-    Fetches unprocessed training data and fine-tunes the Keras Reranker.
+    Placeholder for the training task mentioned in your plan.
     """
     data_points = RerankerTrainingData.objects.filter(processed=False)
-    if data_points.count() < 10:  # Minimum batch size to justify training
-        return "Not enough data to train yet."
+    if data_points.count() < 10:  # Don't train on tiny batches
+        logger.info("Not enough new training data to trigger retraining.")
+        return
 
-    embed_model = get_embedding_model()
-    reranker = get_keras_reranker()
+    logger.info(f"Starting reranker retraining with {data_points.count()} samples.")
 
     queries = []
     candidates = []
     labels = []
 
-    for dp in data_points:
-        queries.append(dp.query_text)
-        candidates.append(dp.candidate_text)
-        labels.append(dp.label)
+    for item in data_points:
+        queries.append(item.query_text)
+        candidates.append(item.candidate_text)
+        labels.append(item.label)
 
-    # Convert text to embeddings
+    # 1. Vectorize text
+    embed_model = get_embedding_model()
     query_embs = embed_model.encode(queries)
     cand_embs = embed_model.encode(candidates)
+
+    # 2. Get/Build model
+    model = get_keras_reranker()
+    
+    # 3. Train on current batch using binary crossentropy
+    X_query = np.array(query_embs) 
+    X_cand = np.array(cand_embs)
     y = np.array(labels)
 
-    # Train the model
-    reranker.fit(
-        [query_embs, cand_embs], 
+    model.fit(
+        [X_query, X_cand], 
         y, 
         epochs=3, 
-        batch_size=4, 
+        batch_size=16, 
         verbose=0
     )
 
-    # Save weights
-    weights_path = os.path.join(settings.BASE_DIR, 'models', 'reranker_weights.weights.h5')
-    os.makedirs(os.path.dirname(weights_path), exist_ok=True)
-    reranker.save_weights(weights_path)
+    # 4. Save weights
+    weights_dir = os.path.join(settings.BASE_DIR, 'models')
+    if not os.path.exists(weights_dir):
+        os.makedirs(weights_dir)
+    
+    weights_path = os.path.join(weights_dir, 'reranker_weights.weights.h5')
+    model.save_weights(weights_path)
 
+    # 5. Mark as processed
     data_points.update(processed=True)
-    return f"Trained on {len(data_points)} samples."
+    logger.info("Reranker model updated and weights saved.")
