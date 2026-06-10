@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Ticket, TicketMessage, RerankedQueue
+from .models import *
 
 # This lets us read/write conversation messages directly inside a Ticket's admin page
 class TicketMessageInline(admin.TabularInline):
@@ -23,3 +23,4 @@ class CategoryAdmin(admin.ModelAdmin):
 class RerankedQueueAdmin(admin.ModelAdmin):
     list_display = ['computed_rank', 'ticket', 'ai_relevance_score', 'target_agent']
     ordering = ['computed_rank']
+admin.site.register(RerankerTrainingData)

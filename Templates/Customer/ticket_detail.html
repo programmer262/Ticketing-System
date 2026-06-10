@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8"><title>{{ ticket.title }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="bg-light">
     <div class="container my-5" style="max-width: 800px;">
@@ -16,10 +17,10 @@
         </div>
 
 <div class="card shadow-sm border-0 mb-4">
-    <div class="card-body p-4" style="height: 500px; overflow-y: scroll; background-color: #f4f6f8;">
+    <div id="chat-window" class="card-body p-4" style="height: 500px; overflow-y: scroll; background-color: #f4f6f8; scroll-behavior: smooth;">
         {% for msg in messages %}
             
-            <div class="mb-3 d-flex flex-column {% if msg.sender.user == request.user %}align-items-end{% else %}align-items-start{% endif %}">
+            <div class="message-bubble mb-3 d-flex flex-column {% if msg.sender.user == request.user %}align-items-end{% else %}align-items-start{% endif %}">
                 
                 <div class="p-3 rounded-3 shadow-sm text-dark " style="max-width: 75%;
                     {% if msg.sender.user == request.user %}
@@ -32,7 +33,7 @@
                         background-color: #e0cffc; border-left: 5px solid #6f42c1; /* AI Co-Pilot Style */
                     {% endif %}">
                     
-                    <p class="mb-1">{{ msg.message }}</p>
+                    <div class="mb-1 markdown-content">{{ msg.message }}</div>
                     
                     <small class="d-block text-end {% if msg.sender.user == request.user %}text-white-50{% else %}text-muted{% endif %}" style="font-size: 0.72rem;">
                         <strong>
@@ -51,7 +52,7 @@
     </div>
 </div>
 
-        <form method="POST" class="card shadow-sm border-0 p-3">
+        <form id="chat-form" method="POST" class="card shadow-sm border-0 p-3">
             {% csrf_token %}
             <div class="input-group">
                 <input type="text" name="message" class="form-control" placeholder="Type your reply here..." required autocomplete="off">
@@ -59,5 +60,64 @@
             </div>
         </form>
     </div>
+
+    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+
+    <script>
+        let messageCount = document.querySelectorAll('.message-bubble').length;
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const sound = document.getElementById('notif-sound');
+
+        function scrollToBottom() {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function renderMarkdown() {
+            document.querySelectorAll('.markdown-content').forEach(el => {
+                el.innerHTML = marked.parse(el.textContent.trim());
+            });
+        }
+
+        async function refreshChat(playNotification = false) {
+            try {
+                const res = await fetch(window.location.href);
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newMessagesHTML = doc.getElementById('chat-window').innerHTML;
+                const newCount = doc.querySelectorAll('.message-bubble').length;
+
+                if (newCount > messageCount) {
+                    chatWindow.innerHTML = newMessagesHTML;
+                    messageCount = newCount;
+                    renderMarkdown();
+                    scrollToBottom();
+                    if (playNotification) {
+                        sound.play().catch(() => console.log("Sound muted by browser policy"));
+                    }
+                }
+            } catch (err) { console.error("Sync error:", err); }
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(chatForm);
+            chatForm.reset();
+            await fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken')}
+            });
+            await refreshChat(false);
+        });
+
+        setInterval(() => refreshChat(true), 4000);
+        window.onload = () => {
+            renderMarkdown();
+            scrollToBottom();
+        };
+    </script>
 </body>
 </html>

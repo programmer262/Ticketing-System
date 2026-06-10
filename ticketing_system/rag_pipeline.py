@@ -12,7 +12,7 @@ EXACT_TITLE_MATCH_SCORE = 0.95
 HUMAN_AGENT_ROLES = ('Agent', 'Supervisor')
 _embedding_model = None
 _keras_reranker = None
-
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def _get_resolution_message(candidate_ticket):
     """
@@ -57,7 +57,7 @@ def build_custom_keras_reranker(embedding_dim=384):
     concat = keras.layers.Concatenate()([input_query, input_doc])
     dense1 = keras.layers.Dense(128, activation='relu')(concat)
     dense2 = keras.layers.Dense(64, activation='relu')(dense1)
-    output = keras.layers.Dense(4, activation='sigmoid', name="relevance_score")(dense2)
+    output = keras.layers.Dense(1, activation='sigmoid', name="relevance_score")(dense2)
     model = keras.Model(inputs=[input_query, input_doc], outputs=output)
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return model
@@ -72,9 +72,6 @@ def get_keras_reranker():
     return _keras_reranker
 
 def generate_llm_response(query_text, historical_resolution):
-    """
-    Tries to use the NVIDIA endpoint. If Windows blocks it, falls back to a template.
-    """
     try:
         nvidia_api_key = getattr(settings, 'NVIDIA_API_KEY', os.getenv('NVIDIA_API_KEY'))
         if not nvidia_api_key:
@@ -82,30 +79,46 @@ def generate_llm_response(query_text, historical_resolution):
             
         llm = ChatNVIDIA(
             model="z-ai/glm-5.1", 
-            temperature=0.1,
-
-            timeout=30  # Don't hang forever
+            temperature=0.1,  # Keep it low so the AI doesn't invent non-existent technical steps
+            timeout=15  
         )
         
+        # --- HIGHLY OPTIMIZED SYSTEM PROMPT ---
         system_prompt = (
-            "You are an AI support assistant. Use the provided historical resolution to "
-            "answer the user's current problem. Be polite and concise."
-            f"Here is the different resolved tickets:{historical_resolution} and the answer you provide needs to be the same just adapted to the user question or query"
+            "You are an advanced AI Customer Support Engineer. Your goal is to resolve a new customer issue "
+            "by adapting an approved, verified historical solution from a past resolved ticket.\n\n"
+            "CRITICAL EXECUTION RULES:\n"
+            "1. REFORMULATE & ADAPT: Do not blindly copy-paste the historical resolution. Rewrite it so that "
+            "it directly addresses the wording, context, and specific problem of the CURRENT incoming issue.\n"
+            "2. ANONYMIZE DATA: Look closely at the historical resolution. If it contains names, order IDs, "
+            "ticket references, IP addresses, or specific dates belonging to the old ticket, strip them out "
+            "or replace them with relevant generic placeholders or context from the new ticket.\n"
+            "3. NO META-COMMENTARY: Speak directly to the customer. Never say things like 'Based on past tickets...' "
+            "or 'According to our system history...'. The customer should feel like you are troubleshooting "
+            "their issue live right now.\n"
+            "4. TONE & LENGTH: Maintain an empathetic, professional, and reassuring tone. Be concise, actionable, "
+            "and break down technical steps into clean, bulleted instructions."
         )
-        user_prompt = f"Current Issue: {query_text}\n\n"
+        
+        # --- EXPLICIT DATA SEPARATION FOR THE CONTEXT WINDOW ---
+        user_prompt = (
+            f"### HISTORICAL VERIFIED RESOLUTION (FOUND IN KNOWLEDGE BASE):\n"
+            f"{historical_resolution}\n\n"
+            f"### CURRENT INCOMING CUSTOMER ISSUE:\n"
+            f"{query_text}\n\n"
+            f"Please generate the optimized, personalized support message for the customer:"
+        )
         
         response = llm.invoke([("system", system_prompt), ("human", user_prompt)])
         print(response)
-        return response["messages"][-1].content
+        return response.content
         
     except Exception as e:
         print(f"[RAG LLM FALLBACK] NVIDIA endpoint unreachable: {e}")
-        # Template fallback — no network needed
         return (
-            f"Hello! We found a similar resolved ticket in our system. "
-            f"The previous resolution was: {historical_resolution}\n\n"
-            f"Please review this and let us know if it resolves your issue, "
-            f"or reply if you need further assistance."
+            f"Hello! We found a closely related ticket in our knowledge base. "
+            f"Here is how it was handled previously:\n\n{historical_resolution}\n\n"
+            f"Please review this guidance and reply back if you need alternative assistance."
         )
 
 def process_new_ticket_for_rag(new_ticket):

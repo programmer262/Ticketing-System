@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect,get_object_or_404
 from django.contrib.auth.decorators import login_required,user_passes_test
+from django.core.paginator import Paginator
 
 from .client_forms import TicketForm
 from .models import *
@@ -149,11 +150,16 @@ def dispatch_dashboard_view(request):
         return redirect('dispatch_dashboard')
 
     # Get data to build the supervisor interface
-    all_tickets = Ticket.objects.all().order_by('-created_at')
+    all_tickets_list = Ticket.objects.all().order_by('-created_at')
+    
+    paginator = Paginator(all_tickets_list, 10)  # Show 10 tickets per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     human_agents = UserProfile.objects.filter(role='Agent') # List of available agents to assign to
 
     return render(request, 'Agents/agent_dispatch.html', {
-        'all_tickets': all_tickets,
+        'page_obj': page_obj,
         'human_agents': human_agents,
     })
 

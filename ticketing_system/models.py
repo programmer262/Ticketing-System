@@ -22,6 +22,7 @@ class Ticket(models.Model):
         ('Open', 'Open'),
         ('In Progress', 'In Progress'),
         ('Closed', 'Closed'),
+        ('Resolved', 'Resolved'),
     ]
 
     # Secure UUID primary key prevents URL guessing
@@ -62,6 +63,8 @@ class RerankedQueue(models.Model):
 
     class Meta:
         ordering = ['computed_rank']
+        verbose_name_plural = "Dispatch Entries"
+        verbose_name = "Dispatch Entry"
 
     def __str__(self):
         return f"Rank {self.computed_rank} -> {self.ticket.title}"
@@ -87,3 +90,5 @@ class RerankerTrainingData(models.Model):
     label = models.FloatField(help_text="1.0 for relevant, 0.0 for irrelevant")
     processed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"TrainingData (Label: {self.label}) for Query: {self.query_text[:30]}..."
