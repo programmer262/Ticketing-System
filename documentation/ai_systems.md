@@ -32,12 +32,6 @@ The Triage System automatically classifies incoming tickets and assigns them a p
 3. **Refusal Phrase Filter**: If the LLM generates a refusal message (e.g. "I cannot help bypass security" or "against policy"), the `_looks_like_refusal` helper ([ai_triage.py:L35](file:///c:/Users/lenovo/Desktop/amine-project/amineproject/ticketing_system/ai_triage.py#L35)) intercepts the response and overrides it with a professional operational description, avoiding raw AI refusals on customer-facing tickets.
 4. **Error Fallback**: If the JSON parser fails or client connections throw exceptions, the handler automatically catches the error and assigns a safe priority level (e.g. `Low` or `Medium`) with a standard fallback explanation to prevent blocking the ticket submission flow.
 
-> [!WARNING]
-> **Architectural Issue identified in `ai_triage.py`**:
-> The instantiation of `llm = ChatNVIDIA(...)` is currently located **outside** the try-except safety block ([ai_triage.py:L72](file:///c:/Users/lenovo/Desktop/amine-project/amineproject/ticketing_system/ai_triage.py#L72)). If the developer's environment has a bad network connection or missing `NVIDIA_API_KEY`, initializing this client raises a connection exception immediately. Since it is unhandled during signal processing, it will crash ticket creation entirely. 
-> **Recommendation**: Wrap the entire initialization block inside the `try-except` block to ensure failures degrade gracefully to standard default priorities.
-
----
 
 ## 🔍 2. RAG Auto-Response Pipeline (`ticketing_system/rag_pipeline.py`)
 
