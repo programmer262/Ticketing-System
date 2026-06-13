@@ -81,14 +81,7 @@ python manage.py runserver
 ```
 Navigate to `http://127.0.0.1:8000/` in your browser.
 
-### Running Celery Background Workers
-To run the background task processor:
-```bash
-celery -A amineproject worker -l info
-```
-*(Note: Celery is configured in `settings.py` to use Redis as a broker. If Redis is unavailable, Celery task execution will degrade or fail unless modified to use the SQLite transport broker).*
 
----
 
 ## 🧪 5. Testing & Verification
 
@@ -106,31 +99,3 @@ python test_rag.py
 
 ---
 
-## ⚠️ 6. Troubleshooting & Known Issues
-
-### 🔍 Issue 1: `ImportError: cannot import name 'bootstrap_training_data'`
-* **Description**: Running `python test_rag.py` results in a compilation failure:
-  ```text
-  ImportError: cannot import name 'bootstrap_training_data' from 'ticketing_system.rag_pipeline'
-  ```
-* **Cause**: `test_rag.py` imports a function `bootstrap_training_data` from `ticketing_system.rag_pipeline` that is not defined in the pipeline code.
-* **Workaround**: To fix the script, edit `test_rag.py` to comment out or delete the following sections:
-  1. Remove `bootstrap_training_data` from the import statement on **line 10**:
-     ```python
-     # Before
-     from ticketing_system.rag_pipeline import process_new_ticket_for_rag, bootstrap_training_data
-     # After
-     from ticketing_system.rag_pipeline import process_new_ticket_for_rag
-     ```
-  2. Comment out or delete the bootstrap block on **lines 52–55**:
-     ```python
-     # Comment out these lines
-     # print("Generating training samples...")
-     # samples = bootstrap_training_data()
-     # print(f"Created {samples} training data points.")
-     ```
-
-### 🔌 Issue 2: Connection reset errors (10054) during `manage.py test`
-* **Description**: Tests fail with `urllib3.exceptions.ProtocolError` or `requests.exceptions.ConnectionError` inside `ai_triage.py`.
-* **Cause**: Django signals (`trigger_ai_triage`) run automatically whenever a new `TicketMessage` is saved in tests. The function `analyze_and_update_ticket` instantiates `ChatNVIDIA(...)` outside of standard error catch blocks, which initiates a live listing API request. In isolated sandbox environments (offline test suites), this request fails and crashes the test database teardown.
-* **Workaround**: Ensure a valid `NVIDIA_API_KEY` is present in your environment/`.env`, or mock the `ChatNVIDIA` constructor inside the Django test suite to prevent live internet requests.
