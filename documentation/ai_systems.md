@@ -87,5 +87,3 @@ When a candidate matches above the threshold (configured in `settings.py` as `RA
    * **Anonymize Data**: Strip names, IP addresses, dates, order IDs, and ticket keys.
    * **Zero Meta-Commentary**: Never state "Based on previous ticket #...". Talk directly and empathetically to the user.
 3. **Response Generation**: Creates a response from the `ai_agent` user, flags the ticket status to `Closed`, and records the successful match in `RerankerTrainingData` for future model tuning.
-4. **Fallback Guard**: If the NVIDIA API is offline during RAG generation, the system returns a safe pre-formatted reply:
-   > "Hello! We found a closely related ticket in our knowledge base. Here is how it was handled previously: [Historical Resolution]. Please review this guidance..."

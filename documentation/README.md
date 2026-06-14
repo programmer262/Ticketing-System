@@ -28,6 +28,15 @@ Click on any of the sections below to access the corresponding documentation pag
 
 ---
 
+## 🗺️ Process Diagrams
+
+We have dedicated flowchart and sequence diagram guides stored in the `Diagrams/` folder:
+
+* **📊 [Process Flow & Activity Diagrams](file:///c:/Users/lenovo/Desktop/amine-project/amineproject/Diagrams/process_flowcharts.md)**: Flowcharts showing execution flows and conditional decision logic for AI Triage, RAG matching, and retraining loops.
+* **📈 [Sequence Diagrams](file:///c:/Users/lenovo/Desktop/amine-project/amineproject/Diagrams/sequence_diagrams.md)**: Sequence logs showing step-by-step function calls and database queries for ticket submission, RAG auto-resolution, supervisor dispatching, agent messaging, and background training.
+
+---
+
 ## 🛠️ Main Tech Stack Reference
 * **Backend Framework**: Django 6.0.5
 * **Asynchronous Task Processing**: Celery 5.6.3 *(Configured as settings/task placeholders; not integrated into live workflows)*

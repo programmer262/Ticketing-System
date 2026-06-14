@@ -1,59 +1,145 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8"><title>Your Support Tickets</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container my-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Your Support Tickets</h2>
-            <a href="{% url 'create_ticket' %}" class="btn btn-primary">+ File New Ticket</a>
+{% extends "base.html" %}
+
+{% block title %}Your Support Tickets — Support Ticketing System{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .dashboard-content {
+        padding: 2rem 0 3rem;
+        animation: fadeInUp 0.5s ease both;
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.6rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+    }
+
+    .search-section {
+        margin-bottom: 1.5rem;
+    }
+
+    /* Table wrapper */
+    .table-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .header-actions {
+            justify-content: stretch;
+        }
+        .header-actions .btn {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<!-- Top Navigation -->
+<nav class="top-nav">
+    <div class="brand">
+        <div class="brand-icon">🎫</div>
+        <span>Support Ticketing System</span>
+    </div>
+    <div class="nav-actions">
+        <form action="{% url 'logout' %}" method="post" style="margin:0;">
+            {% csrf_token %}
+            <button class="btn btn-danger btn-sm" type="submit">Logout</button>
+        </form>
+    </div>
+</nav>
+
+<div class="container-app page-content">
+    <div class="dashboard-content">
+        
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="section-header">
+                <h1>Your Support Tickets</h1>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'create_ticket' %}" class="btn btn-primary">
+                    <span>+</span> File New Ticket
+                </a>
+            </div>
         </div>
 
-        <form method="GET" class="mb-4">
-            <div class="input-group">
+        <!-- Search -->
+        <div class="search-section">
+            <form method="GET" class="search-bar">
                 <input type="text" name="search" class="form-control" placeholder="Search by ticket title..." value="{{ search_query }}">
                 <button type="submit" class="btn btn-secondary">Search</button>
-            </div>
-        </form>
-
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Title</th>
-                            <th>Category</th>
-                            <th>Priority (AI Assigned)</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ticket in tickets %}
-                        <tr>
-                            <td class="fw-bold">{{ ticket.title }}</td>
-                            <td>{{ ticket.category.name|default:"General" }}</td>
-                            <td>
-                                <span class="badge {% if ticket.priority == 'High' %}bg-danger{% elif ticket.priority == 'Medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                    {{ ticket.priority }}
-                                </span>
-                            </td>
-                            <td><span class="badge bg-info text-dark">{{ ticket.status }}</span></td>
-                            <td>{{ ticket.created_at|date:"M d, Y H:i" }}</td>
-                            <td><a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">View Thread</a></td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">No tickets found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            </form>
         </div>
+
+        <!-- Ticket Table -->
+        <div class="table-card table-responsive-cards">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Priority (AI)</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td class="text-bold" data-label="Title">{{ ticket.title }}</td>
+                        <td data-label="Category">{{ ticket.category.name|default:"General" }}</td>
+                        <td data-label="Priority">
+                            <span class="badge {% if ticket.priority == 'High' %}badge-danger{% elif ticket.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ ticket.priority }}
+                            </span>
+                        </td>
+                        <td data-label="Status">
+                            <span class="badge badge-info">{{ ticket.status }}</span>
+                        </td>
+                        <td data-label="Created">{{ ticket.created_at|date:"M d, Y H:i" }}</td>
+                        <td data-label="Action">
+                            <a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-outline btn-sm">View Thread</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-icon">📭</div>
+                                <h3>No tickets yet</h3>
+                                <p>Submit your first ticket and our AI will triage it instantly.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

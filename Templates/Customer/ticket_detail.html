@@ -1,123 +1,366 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8"><title>{{ ticket.title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body class="bg-light">
-    <div class="container my-5" style="max-width: 800px;">
-        <a href="{% url 'ticket_dashboard' %}" class="btn btn-sm btn-link mb-3">← Back to Dashboard</a>
-        
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <h3 class="fw-bold">{{ ticket.title }}</h3>
-                <p class="text-muted mb-0">Status: <strong>{{ ticket.status }}</strong> | Priority: <strong>{{ ticket.priority }}</strong></p>
+{% extends "base.html" %}
+
+{% block title %}{{ ticket.title }} — Support Ticketing System{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .chat-page {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: 860px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        overflow: hidden;
+    }
+
+    /* Ticket info bar */
+    .ticket-bar {
+        padding: 1rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .ticket-bar .back-link {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: color var(--transition-fast);
+    }
+
+    .ticket-bar .back-link:hover {
+        color: var(--text-primary);
+    }
+
+    .ticket-info-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.15rem 1.5rem;
+        margin-bottom: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    .ticket-info-card h2 {
+        font-size: 1.15rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .ticket-info-card .ticket-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+    }
+
+    .ticket-info-card .ticket-meta strong {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Chat window */
+    .chat-window {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 0.25rem 1rem;
+        scroll-behavior: smooth;
+    }
+
+    /* Message bubbles */
+    .message-row {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0.85rem;
+    }
+
+    .message-row.align-right {
+        align-items: flex-end;
+    }
+
+    .message-row.align-left {
+        align-items: flex-start;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 0.85rem 1.1rem;
+        border-radius: var(--radius-lg);
+        font-size: 0.9rem;
+        line-height: 1.55;
+        position: relative;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Current user — violet gradient */
+    .bubble-self {
+        background: rgb(0, 0, 100);
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+        border-right: 3px solid rgb(10, 10, 230);
+    }
+
+    .bubble-self .msg-footer {
+        color: hsla(0, 0%, 100%, 0.55);
+    }
+
+    /* Agent — emerald */
+    .bubble-agent {
+        background: hsla(160, 70%, 42%, 0.1);
+        color: var(--text-primary);
+        border-left: 3px solid var(--accent-success);
+        border-bottom-left-radius: 4px;
+    }
+
+    /* Supervisor — slate */
+    .bubble-supervisor {
+        background: hsla(228, 15%, 55%, 0.1);
+        color: var(--text-primary);
+        border-left: 3px solid var(--text-secondary);
+        border-bottom-left-radius: 4px;
+    }
+
+    /* AI — purple */
+    .bubble-ai {
+        background: hsla(270, 60%, 50%, 0.1);
+        color: var(--text-primary);
+        border-left: 3px solid hsl(270, 60%, 55%);
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.45rem;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .msg-footer strong {
+        font-weight: 600;
+    }
+
+    .markdown-content p {
+        margin-bottom: 0.3rem;
+    }
+
+    .markdown-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .markdown-content code {
+        background: hsla(228, 20%, 30%, 0.4);
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+    }
+
+    .markdown-content pre {
+        background: var(--bg-primary);
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        margin: 0.5rem 0;
+        overflow-x: auto;
+    }
+
+    .markdown-content ul,
+    .markdown-content ol {
+        padding-left: 1.25rem;
+        margin: 0.3rem 0;
+    }
+
+    /* Chat input */
+    .chat-input-bar {
+        flex-shrink: 0;
+        padding: 0.75rem 0 1.25rem;
+    }
+
+    .chat-input-form {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 0.5rem;
+    }
+
+    .chat-input-form input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 0.65rem 0.75rem;
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 0.9rem;
+        outline: none;
+    }
+
+    .chat-input-form input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .chat-input-form .btn {
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .chat-container {
+            padding: 0 1rem;
+        }
+
+        .message-bubble {
+            max-width: 88%;
+        }
+
+        .ticket-info-card {
+            padding: 0.9rem 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .message-bubble {
+            max-width: 92%;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="chat-page">
+    <!-- Top Nav -->
+    <nav class="top-nav">
+        <div class="brand">
+            <div class="brand-icon">🎫</div>
+            <span>Support Ticketing System</span>
+        </div>
+        <div class="nav-actions">
+            <a href="{% url 'ticket_dashboard' %}" class="btn btn-ghost btn-sm">← Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="chat-container">
+
+        <!-- Ticket Info -->
+        <div class="ticket-info-card">
+            <h2>{{ ticket.title }}</h2>
+            <div class="ticket-meta">
+                <span>Status: <strong>{{ ticket.status }}</strong></span>
+                <span>•</span>
+                <span>Priority: <strong>{{ ticket.priority }}</strong></span>
             </div>
         </div>
 
-<div class="card shadow-sm border-0 mb-4">
-    <div id="chat-window" class="card-body p-4" style="height: 500px; overflow-y: scroll; background-color: #f4f6f8; scroll-behavior: smooth;">
-        {% for msg in messages %}
-            
-            <div class="message-bubble mb-3 d-flex flex-column {% if msg.sender.user == request.user %}align-items-end{% else %}align-items-start{% endif %}">
-                
-                <div class="p-3 rounded-3 shadow-sm text-dark " style="max-width: 75%;
-                    {% if msg.sender.user == request.user %}
-                        background-color: #0d6efd; color: white !important; /* Current logged-in user bubble */
-                    {% elif msg.sender.role == 'Agent' %}
-                        background-color: #d1e7dd; border-left: 5px solid #198754; /* Human Agent Style */
-                    {% elif msg.sender.role == 'Supervisor' %}
-                        background-color: #e2e3e5; border-left: 5px solid #6c757d; /* Supervisor Style */
-                    {% elif msg.sender.role == 'AI_Agent' or not msg.sender %}
-                        background-color: #e0cffc; border-left: 5px solid #6f42c1; /* AI Co-Pilot Style */
-                    {% endif %}">
-                    
-                    <div class="mb-1 markdown-content">{{ msg.message }}</div>
-                    
-                    <small class="d-block text-end {% if msg.sender.user == request.user %}text-white-50{% else %}text-muted{% endif %}" style="font-size: 0.72rem;">
+        <!-- Chat Messages -->
+        <div id="chat-window" class="chat-window">
+            {% for msg in messages %}
+            <div class="message-row {% if msg.sender.user == request.user %}align-right{% else %}align-left{% endif %}">
+                <div
+                    class="message-bubble {% if msg.sender.user == request.user %}bubble-self{% elif msg.sender.role == 'Agent' %}bubble-agent{% elif msg.sender.role == 'Supervisor' %}bubble-supervisor{% elif msg.sender.role == 'AI_Agent' or not msg.sender %}bubble-ai{% else %}bubble-agent{% endif %}">
+                    <div class="markdown-content">{{ msg.message }}</div>
+                    <div class="msg-footer">
                         <strong>
                             {% if msg.sender %}
-                                {{ msg.sender.user.username }} ({{ msg.sender.role }})
+                            {{ msg.sender.user.username }} ({{ msg.sender.role }})
                             {% else %}
-                                System AI Engine
+                            System AI Engine
                             {% endif %}
-                        </strong> 
-                        • {{ msg.created_at|date:"H:i" }}
-                    </small>
+                        </strong>
+                        <span>• {{ msg.created_at|date:"H:i" }}</span>
+                    </div>
                 </div>
             </div>
+            {% endfor %}
+        </div>
 
-        {% endfor %}
+        <!-- Chat Input -->
+        <div class="chat-input-bar">
+            <form id="chat-form" method="POST" class="chat-input-form">
+                {% csrf_token %}
+                <input type="text" name="message" placeholder="Type your reply here..." required autocomplete="off">
+                <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+        </div>
     </div>
 </div>
 
-        <form id="chat-form" method="POST" class="card shadow-sm border-0 p-3">
-            {% csrf_token %}
-            <div class="input-group">
-                <input type="text" name="message" class="form-control" placeholder="Type your reply here..." required autocomplete="off">
-                <button type="submit" class="btn btn-primary">Send Message</button>
-            </div>
-        </form>
-    </div>
+<audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
 
-    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+{% endblock %}
 
-    <script>
-        let messageCount = document.querySelectorAll('.message-bubble').length;
-        const chatWindow = document.getElementById('chat-window');
-        const chatForm = document.getElementById('chat-form');
-        const sound = document.getElementById('notif-sound');
+{% block extra_scripts %}
+<script>
+    let messageCount = document.querySelectorAll('.message-row').length;
+    const chatWindow = document.getElementById('chat-window');
+    const chatForm = document.getElementById('chat-form');
+    const sound = document.getElementById('notif-sound');
 
-        function scrollToBottom() {
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
+    function scrollToBottom() {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
 
-        function renderMarkdown() {
-            document.querySelectorAll('.markdown-content').forEach(el => {
-                el.innerHTML = marked.parse(el.textContent.trim());
-            });
-        }
-
-        async function refreshChat(playNotification = false) {
-            try {
-                const res = await fetch(window.location.href);
-                const html = await res.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                const newMessagesHTML = doc.getElementById('chat-window').innerHTML;
-                const newCount = doc.querySelectorAll('.message-bubble').length;
-
-                if (newCount > messageCount) {
-                    chatWindow.innerHTML = newMessagesHTML;
-                    messageCount = newCount;
-                    renderMarkdown();
-                    scrollToBottom();
-                    if (playNotification) {
-                        sound.play().catch(() => console.log("Sound muted by browser policy"));
-                    }
-                }
-            } catch (err) { console.error("Sync error:", err); }
-        }
-
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(chatForm);
-            chatForm.reset();
-            await fetch(window.location.href, {
-                method: 'POST',
-                body: formData,
-                headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken')}
-            });
-            await refreshChat(false);
+    function renderMarkdown() {
+        document.querySelectorAll('.markdown-content').forEach(el => {
+            el.innerHTML = marked.parse(el.textContent.trim());
         });
+    }
 
-        setInterval(() => refreshChat(true), 4000);
-        window.onload = () => {
-            renderMarkdown();
-            scrollToBottom();
-        };
-    </script>
-</body>
-</html>
+    async function refreshChat(playNotification = false) {
+        try {
+            const res = await fetch(window.location.href);
+            const html = await res.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const newMessagesHTML = doc.getElementById('chat-window').innerHTML;
+            const newCount = doc.querySelectorAll('.message-row').length;
+
+            if (newCount > messageCount) {
+                chatWindow.innerHTML = newMessagesHTML;
+                messageCount = newCount;
+                renderMarkdown();
+                scrollToBottom();
+                if (playNotification) {
+                    sound.play().catch(() => console.log("Sound muted by browser policy"));
+                }
+            }
+        } catch (err) { console.error("Sync error:", err); }
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(chatForm);
+        chatForm.reset();
+        await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+        });
+        await refreshChat(false);
+    });
+
+    setInterval(() => refreshChat(true), 4000);
+    window.onload = () => {
+        renderMarkdown();
+        scrollToBottom();
+    };
+</script>
+{% endblock %}

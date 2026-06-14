@@ -1,87 +1,114 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent Personal Workspace</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+{% block title %}Agent Workspace — Support Ticketing System{% endblock %}
 
-<body class="bg-light">
+{% block extra_styles %}
+<style>
+    .workspace-content {
+        padding: 2rem 0 3rem;
+        max-width: 920px;
+        margin: 0 auto;
+        animation: fadeInUp 0.5s ease both;
+    }
 
-    <nav class="navbar navbar-dark bg-secondary mb-4">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">💼 Agent Workspace</span>
-            <span class="text-white-50">Active Agent: <strong>{{ request.user.username }}</strong></span>
-            <form action="{% url 'logout' %}" method="post">
-                {% csrf_token %}
-                <button class="btn btn-danger" type="submit">Logout</button>
-            </form>
-            {% if request.user.profile.role == "Supervisor" %}
-            <a href="{% url 'dispatch_dashboard' %}" class="btn btn-success mx-3" style="width: 120px;">Dispatch</a>
-            {% endif %}
+    .workspace-header {
+        margin-bottom: 1.75rem;
+    }
+
+    .workspace-header h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .workspace-header p {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+    }
+
+    .task-list {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .task-card {
+        padding: 1.25rem 1.5rem;
+    }
+
+    .task-card .task-title {
+        font-size: 1.05rem;
+    }
+
+    .task-card .task-customer {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+    }
+
+    .task-card .task-customer strong {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<!-- Top Navigation -->
+<nav class="top-nav">
+    <div class="brand">
+        <div class="brand-icon">💼</div>
+        <span>Agent Workspace</span>
+    </div>
+    <span class="nav-meta">Active Agent: <strong>{{ request.user.username }}</strong></span>
+    <div class="nav-actions">
+        {% if request.user.profile.role == "Supervisor" %}
+        <a href="{% url 'dispatch_dashboard' %}" class="btn btn-success btn-sm">Dispatch</a>
+        {% endif %}
+        <form action="{% url 'logout' %}" method="post" style="margin:0;">
+            {% csrf_token %}
+            <button class="btn btn-danger btn-sm" type="submit">Logout</button>
+        </form>
+    </div>
+</nav>
+
+<div class="container-app page-content">
+    <div class="workspace-content">
+
+        <div class="workspace-header">
+            <h1>Your Dispatched Tasks</h1>
+            <p>Tickets manually assigned to you by your supervisor.</p>
         </div>
-    </nav>
-    <div class="container-fluid">
-        <div class="row">
 
-
-            <!-- Main Content -->
-            <div class="col-md-9">
-
-
-                <div class="container my-5" style="max-width: 900px;">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h2 class="fw-bold text-dark mb-1">Your Dispatched Tasks</h2>
-                            <p class="text-muted mb-0">Tickets manually assigned to you by your supervisor.</p>
-                        </div>
+        <div class="task-list">
+            {% for entry in my_queue %}
+            <div class="task-card">
+                <div class="task-info">
+                    <div class="task-badges">
+                        <span class="badge badge-dark">Queue #{{ entry.computed_rank }}</span>
+                        <span class="badge {% if entry.ticket.priority == 'High' %}badge-danger{% elif entry.ticket.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}">
+                            AI Priority: {{ entry.ticket.priority }}
+                        </span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">
+                            {{ entry.ticket.created_at|date:"M d, H:i" }}
+                        </span>
                     </div>
-
-                    <div class="card border-0 shadow-sm rounded-3">
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                {% for entry in my_queue %}
-                                <div
-                                    class="list-group-item p-4 d-flex justify-content-between align-items-center bg-white">
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <span class="badge bg-dark">Queue Position:{{entry.computed_rank}} </span>
-
-                                            <span
-                                                class="badge {% if entry.ticket.priority == 'High' %}bg-danger{% elif entry.ticket.priority == 'Medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                                AI Priority: {{ entry.ticket.priority }}
-                                            </span>
-
-                                            <span class="text-muted small">
-                                                {{ entry.ticket.created_at|date:"M d, H:i" }}</span>
-                                        </div>
-
-                                        <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.2rem;">
-                                            {{entry.ticket }}</h4>
-                                        <p class="text-muted mb-0 small">Opened by customer: <strong
-                                                class="text-secondary">{{entry.ticket.customer}}</strong></p>
-                                    </div>
-
-                                    <a href="{% url 'ticket_detail' entry.ticket.id %}"
-                                        class="btn btn-outline-success px-4 py-2 fw-semibold shadow-sm">
-                                        Open Chat Thread
-                                    </a>
-                                </div>
-                                {% empty %}
-                                <div class="text-center py-5 text-muted">
-                                    <h3 class="fw-bold text-success mb-2">🎉 Inbox Zero!</h3>
-                                    <p class="mb-0 text-secondary">You have no pending assignments from the supervisor
-                                        right now.
-                                    </p>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
+                    <div class="task-title">{{ entry.ticket }}</div>
+                    <div class="task-customer">Opened by: <strong>{{ entry.ticket.customer }}</strong></div>
                 </div>
-
-</body>
-
-</html>
+                <a href="{% url 'ticket_detail' entry.ticket.id %}" class="btn btn-success btn-sm">
+                    Open Chat Thread
+                </a>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <div class="empty-icon">🎉</div>
+                <h3>Inbox Zero!</h3>
+                <p>You have no pending assignments from the supervisor right now.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
