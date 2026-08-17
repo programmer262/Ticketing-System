@@ -121,7 +121,7 @@ setuptools==81.0.0
 shellingham==1.5.4
 six==1.17.0
 SQLAlchemy==2.0.50
-sqlparse==0.5.5
+sqlparse==0.6.0
 sympy==1.14.0
 tenacity==9.1.4
 tensorflow==2.21.0
